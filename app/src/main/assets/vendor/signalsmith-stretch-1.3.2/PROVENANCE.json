@@ -1,0 +1,14 @@
+{
+  "package": "signalsmith-stretch",
+  "version": "1.3.2",
+  "npmTarball": "https://registry.npmjs.org/signalsmith-stretch/-/signalsmith-stretch-1.3.2.tgz",
+  "npmIntegrity": "sha512-tJqRbwPCoWLSHXwO29UQ75u72IwPsHns3RG+TKzuOAp7OduJiJMzEtz32JEFbPFQcTR7aiKCIVc+/Kzw8bMZUw==",
+  "gitHead": "222093b4cc13ddb4d07c826bc3c1559326091731",
+  "source": "https://signalsmith-audio.co.uk/code/stretch/",
+  "runtime": "Unmodified embedded WASM extracted from official npm SignalsmithStretch.mjs. Minimal loader extraction only; no DSP rebuild or substitution.",
+  "wasmSHA256": "83869197b3c5ebf9fc8c517a1586aef1ecf77404842218d62b9c0e82882d8ca3",
+  "upstreamModuleSHA256": "97530b11d5bc01015af4cde40d6aa55ff10c40aa1294ca4c8c5762027d517a46",
+  "dependency": "Signalsmith Linear (upstream CMake pins 0.1.2), MIT",
+  "licenseNoticeSource": "https://cdn.jsdelivr.net/gh/Signalsmith-Audio/signalsmith-stretch@222093b4cc13ddb4d07c826bc3c1559326091731/LICENSE.txt",
+  "linearNoticeSource": "https://cdn.jsdelivr.net/gh/Signalsmith-Audio/linear@0.1.2/LICENSE.txt"
+}

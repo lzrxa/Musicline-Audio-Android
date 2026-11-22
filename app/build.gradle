@@ -1,0 +1,10 @@
+plugins { id 'com.android.application' }
+android { namespace 'cn.musicline.audiooffline'; compileSdk 35
+ defaultConfig { applicationId 'cn.musicline.audiooffline'; minSdk 26; targetSdk 35; versionCode 13; versionName '4.0.0-rc1' }
+ compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+}
+dependencies {
+ implementation 'androidx.webkit:webkit:1.12.1'
+ implementation 'com.microsoft.onnxruntime:onnxruntime-android:1.22.0'
+ implementation 'com.github.wendykierp:JTransforms:3.1'
+}

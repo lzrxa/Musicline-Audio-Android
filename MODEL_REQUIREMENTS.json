@@ -1,0 +1,58 @@
+{
+  "version": "3.4-alpha",
+  "default_model": "UVR-MDX-NET-Inst_HQ_3",
+  "storage": "Android app-private filesDir/mdx-models",
+  "downloads": "On demand via native HTTPS, not APK assets",
+  "models": [
+    {
+      "id": "UVR-MDX-NET-Inst_HQ_3",
+      "display": "MDX Inst HQ3",
+      "url": "https://huggingface.co/Anjok/model-repo/resolve/main/UVR-MDX-NET-Inst_HQ_3.onnx",
+      "sha256": "317554b07fe1ea5279a77f2b1520a41ea4b93432560c4ffd08792c30fddf9adc"
+    },
+    {
+      "id": "UVR-MDX-NET-Voc_FT",
+      "display": "MDX Vocal FT",
+      "url": "https://huggingface.co/Anjok/model-repo/resolve/main/UVR-MDX-NET-Voc_FT.onnx",
+      "sha256": null
+    },
+    {
+      "id": "Kim_Vocal_2",
+      "display": "Kim Vocal 2",
+      "url": "https://huggingface.co/Anjok/model-repo/resolve/main/Kim_Vocal_2.onnx",
+      "sha256": null
+    },
+    {
+      "id": "UVR_MDXNET_KARA_2",
+      "display": "MDX Karaoke",
+      "url": "https://huggingface.co/notabilia/uvr5-models/resolve/main/UVR_MDXNET_KARA_2.onnx",
+      "sha256": null
+    },
+    {
+      "id": "UVR_MDXNET_Main",
+      "display": "MDX Main",
+      "url": "https://huggingface.co/notabilia/uvr5-models/resolve/main/UVR_MDXNET_Main.onnx",
+      "sha256": null
+    }
+  ],
+  "note": "Models are not included. HQ3 is pinned to a SHA-256; others use first-download digests for integrity, not authenticity. Actual model correctness requires signature and audio quality validation.",
+  "inference": "Native CPU ONNX experimental, HQ3/Vocal FT, still not tested with real models or Android device",
+  "supported_inference_models": [
+    "UVR-MDX-NET-Inst_HQ_3",
+    "UVR-MDX-NET-Voc_FT"
+  ],
+  "other_models_download_only": true,
+  "changes": [
+    "HQ3/Vocal FT model I/O shape preflight",
+    "cancel-safe atomic WAV export",
+    "double-stem output integrity check",
+    "offline stem inspection utility",
+    "Atomic ZIP publication and archive structure verification",
+    "FFT reconstruction golden tests (model-independent)",
+    "Optional real ONNX metadata and inference probe",
+    "Debug APK build via GitHub Actions (no local Android SDK needed on authoring machine)",
+    "ZIP entries read to verify CRC and size before publish",
+    "Old ZIP cleanup at new-run start, failure, and export cancel",
+    "Android file picker filtered to WAV inputs"
+  ]
+}

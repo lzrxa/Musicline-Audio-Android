@@ -1,0 +1,1 @@
+Source: user supplied Musicline V3.15.12. Includes lamejs-1.2.1 (LGPLv3, see vendor/lamejs-1.2.1/LGPL-3); signalsmith-stretch included with original provenance/LICENSE. AI source is included for reference but the AI ONNX weights and JS runtime have NOT been bundled.
