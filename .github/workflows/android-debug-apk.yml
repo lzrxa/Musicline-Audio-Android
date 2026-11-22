@@ -1,4 +1,5 @@
 name: Musicline Android APK Build and Verify
+
 on:
   workflow_dispatch:
   push:
@@ -10,25 +11,81 @@ on:
       - 'tests/**'
       - 'tools/**'
       - '.github/workflows/android-debug-apk.yml'
+
 permissions:
   contents: read
+
 jobs:
   debug-apk:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
-      - uses: gradle/actions/setup-gradle@v4
+
+      # Ubuntu hosted runners already ship with Android SDK command-line tools.
+      # Do not run android-actions/setup-android@v3: its legacy 'tools'
+      # package installation currently fails before the build starts.
+      - name: Install Android SDK 35
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "ANDROID_HOME=${ANDROID_HOME:-}"
+          echo "ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT:-}"
+          command -v sdkmanager
+          sdkmanager --version
+          sdkmanager --install 'platforms;android-35' 'build-tools;35.0.0' 'platform-tools'
+          test -f "${ANDROID_HOME}/platforms/android-35/android.jar"
+          test -x "${ANDROID_HOME}/build-tools/35.0.0/apksigner"
+
+      - name: Set up Gradle 8.10.2
+        uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10.2'
-      - name: Install Android SDK 35
-        run: sdkmanager --install 'platforms;android-35' 'build-tools;35.0.0'
-      - name: Validate offline assets and project before building
+
+      - name: Validate offline resources
         run: python3 tools/check_release.py --source-only
-      - name: Run existing regression checks
-        run: python3 tests/run_v35_checks.py && python3 tests/verify_fft
+
+      - name: Run source and audio reference tests
+        run: |
+          python3 tests/run_v35_checks.py
+          python3 tests/verify_fft_reference.py
+          python3 tests/verify_source.py
+
+      - name: Compile actual Android debug APK
+        run: gradle --no-daemon --stacktrace --console plain :app:assembleDebug
+
+      - name: Verify APK content and signature
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK='app/build/outputs/apk/debug/app-debug.apk'
+          python3 tools/check_release.py --apk "$APK"
+          "${ANDROID_HOME}/build-tools/35.0.0/apksigner" verify --verbose "$APK"
+          ls -lh "$APK" "$APK.sha256"
+
+      - name: Publish APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: musicline-audio-v4-debug-apk
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/debug/app-debug.apk.sha256
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload build diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: musicline-build-failure-diagnostics
+          path: |
+            app/build/reports/**
+            app/build/outputs/logs/**
+          if-no-files-found: ignore
