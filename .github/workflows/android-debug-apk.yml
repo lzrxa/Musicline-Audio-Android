@@ -63,11 +63,19 @@ jobs:
       - name: Validate offline resources
         run: python3 tools/check_release.py --source-only
 
+      - name: Set up Python test runtime
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install audio-test dependencies
+        run: python -m pip install --disable-pip-version-check 'numpy>=1.26,<3' 'scipy>=1.11,<2'
+
       - name: Run source and audio reference tests
         run: |
-          python3 tests/run_v35_checks.py
-          python3 tests/verify_fft_reference.py
-          python3 tests/verify_source.py
+          python tests/run_v35_checks.py
+          python tests/verify_fft_reference.py
+          python tests/verify_source.py
 
       - name: Compile actual Android debug APK
         run: gradle --no-daemon --stacktrace --console plain :app:assembleDebug
