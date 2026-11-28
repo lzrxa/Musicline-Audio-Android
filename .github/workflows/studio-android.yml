@@ -1,0 +1,114 @@
+name: Studio Android Build
+run-name: Studio ${{ inputs.nonce || inputs.mode }}
+on:
+  workflow_dispatch:
+    inputs:
+      nonce:
+        type: string
+        default: ""
+      mode:
+        type: choice
+        options: [debug, release]
+        default: debug
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: ${{ inputs.mode == 'release' && 'release' || 'debug' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+          cache-disabled: true
+      - name: Build debug
+        if: inputs.mode == 'debug'
+        run: |
+          if [ -f gradlew ]; then bash gradlew --no-daemon assembleDebug bundleDebug; else gradle --no-daemon assembleDebug bundleDebug; fi
+      - name: Build unsigned release
+        if: inputs.mode == 'release'
+        run: |
+          if [ -f gradlew ]; then bash gradlew --no-daemon assembleRelease bundleRelease; else gradle --no-daemon assembleRelease bundleRelease; fi
+      - name: Sign and verify release
+        if: inputs.mode == 'release'
+        shell: bash
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASS: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          : "${KEYSTORE_B64:?Missing keystore}" "${STORE_PASS:?Missing store password}" "${KEY_PASS:?Missing key password}" "${KEY_ALIAS:?Missing alias}"
+          umask 077
+          ks=$(mktemp)
+          trap 'rm -f "$ks"' EXIT
+          printf '%s' "$KEYSTORE_B64" | base64 -d > "$ks"
+          tools=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)
+          mkdir -p studio-release
+          mapfile -t apks < <(find app/build/outputs/apk/release -name '*-unsigned.apk')
+          mapfile -t aabs < <(find app/build/outputs/bundle/release -name '*.aab')
+          test "${#apks[@]}" = 1 && test "${#aabs[@]}" = 1
+          "$tools/zipalign" -p -f 4 "${apks[0]}" "$RUNNER_TEMP/aligned.apk"
+          "$tools/apksigner" sign --ks "$ks" --ks-key-alias "$KEY_ALIAS" --ks-pass env:STORE_PASS --key-pass env:KEY_PASS --out studio-release/app-release.apk "$RUNNER_TEMP/aligned.apk"
+          "$tools/apksigner" verify --verbose studio-release/app-release.apk
+          jarsigner -keystore "$ks" -storepass:env STORE_PASS -keypass:env KEY_PASS -signedjar studio-release/app-release.aab "${aabs[0]}" "$KEY_ALIAS"
+          jarsigner -verify studio-release/app-release.aab
+          (cd studio-release && sha256sum *.apk *.aab > SHA256SUMS.txt)
+      - uses: actions/upload-artifact@v4
+        if: inputs.mode == 'debug'
+        with:
+          name: android-debug
+          path: |
+            **/build/outputs/apk/debug/*.apk
+            **/build/outputs/bundle/debug/*.aab
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: inputs.mode == 'release'
+        with:
+          name: android-release
+          path: studio-release/
+          if-no-files-found: error
+      - name: Upload APK and Source ZIP to TiantianAI R2 (Optional)
+        if: env.CB_URL != '' && env.CB_TOKEN != ''
+        shell: bash
+        env:
+          CB_URL: ${{ secrets.TIANTIAN_CALLBACK_URL }}
+          CB_TOKEN: ${{ secrets.TIANTIAN_CALLBACK_TOKEN }}
+          BUILD_NONCE: ${{ inputs.nonce || github.run_id }}
+          BUILD_MODE: ${{ inputs.mode }}
+          BUILD_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if [ "$BUILD_MODE" = "release" ]; then
+            APK_FILE=$(find studio-release -maxdepth 1 -name '*.apk' | head -n 1 || true)
+          else
+            APK_FILE=$(find . -path '*/build/outputs/apk/debug/*.apk' | head -n 1 || true)
+          fi
+          if [ -n "${APK_FILE:-}" ] && [ -f "$APK_FILE" ]; then
+            APK_NAME=$(basename "$APK_FILE")
+            echo "Uploading $APK_NAME to TiantianAI R2..."
+            curl -fsS -X POST \
+              -H "X-Studio-Callback-Token: $CB_TOKEN" \
+              -H "Content-Type: application/vnd.android.package-archive" \
+              --data-binary "@$APK_FILE" \
+              "${CB_URL}?nonce=${BUILD_NONCE}&kind=apk&mode=${BUILD_MODE}&sha=${BUILD_SHA}&name=${APK_NAME}"
+            echo ""
+          fi
+          SRC_ZIP="$RUNNER_TEMP/source-${BUILD_NONCE}.zip"
+          zip -rq "$SRC_ZIP" . -x '.git/*' '*/build/*' '.gradle/*' 'studio-release/*'
+          curl -fsS -X POST \
+            -H "X-Studio-Callback-Token: $CB_TOKEN" \
+            -H "Content-Type: application/zip" \
+            --data-binary "@$SRC_ZIP" \
+            "${CB_URL}?nonce=${BUILD_NONCE}&kind=src&mode=${BUILD_MODE}&sha=${BUILD_SHA}&name=source-${BUILD_NONCE}.zip"
+          echo ""

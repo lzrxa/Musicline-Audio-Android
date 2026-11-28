@@ -1,0 +1,25 @@
+name: TiantianAI Scheduled Agent
+on:
+  schedule:
+    # 每天北京时间 08:00（UTC 00:00）自动触发你在天天AI里开启的全部定时任务
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger TiantianAI /api/cron/run
+        env:
+          CRON_URL: ${{ secrets.TIANTIAN_CRON_URL }}
+          CB_TOKEN: ${{ secrets.TIANTIAN_CALLBACK_TOKEN }}
+        run: |
+          set -euo pipefail
+          : "${CRON_URL:?请在仓库 Secrets 配置 TIANTIAN_CRON_URL (https://你的域名/api/cron/run)}"
+          : "${CB_TOKEN:?请在仓库 Secrets 配置 TIANTIAN_CALLBACK_TOKEN}"
+          curl -fsS -X POST \
+            -H "X-Studio-Callback-Token: $CB_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            "$CRON_URL"
+          echo ""
